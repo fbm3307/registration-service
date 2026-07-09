@@ -48,8 +48,8 @@ func TestPhoneLookupTotalIncrements(t *testing.T) {
 	total.WithLabelValues("blocked", "high").Inc()
 
 	// then
-	assert.Equal(t, float64(1), promtestutil.ToFloat64(total.WithLabelValues("allowed", "low")))
-	assert.Equal(t, float64(2), promtestutil.ToFloat64(total.WithLabelValues("blocked", "high")))
+	assert.InDelta(t, float64(1), promtestutil.ToFloat64(total.WithLabelValues("allowed", "low")), 0.01)
+	assert.InDelta(t, float64(2), promtestutil.ToFloat64(total.WithLabelValues("blocked", "high")), 0.01)
 	assert.Equal(t, 2, promtestutil.CollectAndCount(total))
 }
 
@@ -69,7 +69,7 @@ func TestPhoneLookupErrorsTotalIncrements(t *testing.T) {
 	errors.WithLabelValues("timeout").Inc()
 
 	// then
-	assert.Equal(t, float64(2), promtestutil.ToFloat64(errors.WithLabelValues("api_error")))
-	assert.Equal(t, float64(1), promtestutil.ToFloat64(errors.WithLabelValues("timeout")))
+	assert.InDelta(t, float64(2), promtestutil.ToFloat64(errors.WithLabelValues("api_error")), 0.01)
+	assert.InDelta(t, float64(1), promtestutil.ToFloat64(errors.WithLabelValues("timeout")), 0.01)
 	assert.Equal(t, 2, promtestutil.CollectAndCount(errors))
 }
