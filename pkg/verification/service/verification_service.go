@@ -262,15 +262,18 @@ func (s *ServiceImpl) performPhoneLookup(ctx *gin.Context, cfg configuration.Reg
 		annotationValues[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey] = string(detailsJSON)
 	}
 	if isHighRiskPhone(result) {
-		PhoneLookupTotal.WithLabelValues("blocked", result.CarrierRiskCategory).Inc()
 		log.Info(ctx, fmt.Sprintf("high risk phone detected (carrier_risk=%s, blocked=%t, phone_lookup_mode=%s)",
 			result.CarrierRiskCategory, result.NumberBlocked, mode))
 		if mode == toolchainv1alpha1.PhoneLookupModeEnabled {
+			// Count as blocked only when the signup is actually rejected.
+			PhoneLookupTotal.WithLabelValues("blocked", result.CarrierRiskCategory).Inc()
 			return true, crterrors.NewForbiddenError("phone verification rejected", "cannot proceed with verification")
 		}
-	} else {
+		// mode == log: high-risk is detected but not enforced; still charged, user proceeds.
 		PhoneLookupTotal.WithLabelValues("allowed", result.CarrierRiskCategory).Inc()
+		return false, nil
 	}
+	PhoneLookupTotal.WithLabelValues("allowed", result.CarrierRiskCategory).Inc()
 	return false, nil
 }
 

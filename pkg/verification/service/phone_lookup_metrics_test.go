@@ -12,6 +12,8 @@ import (
 func TestRegisterPhoneLookupMetrics(t *testing.T) {
 	// given
 	reg := prometheus.NewRegistry()
+	PhoneLookupTotal.Reset()
+	PhoneLookupErrorsTotal.Reset()
 
 	// when
 	require.NotPanics(t, func() {
@@ -33,43 +35,31 @@ func TestRegisterPhoneLookupMetrics(t *testing.T) {
 }
 
 func TestPhoneLookupTotalIncrements(t *testing.T) {
-	// given — use a fresh CounterVec so tests don't share global state
-	total := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "sandbox_signup_phone_lookup_total_test",
-			Help: "test",
-		},
-		[]string{"result", "risk_category"},
-	)
+	// given
+	PhoneLookupTotal.Reset()
 
 	// when
-	total.WithLabelValues("allowed", "low").Inc()
-	total.WithLabelValues("blocked", "high").Inc()
-	total.WithLabelValues("blocked", "high").Inc()
+	PhoneLookupTotal.WithLabelValues("allowed", "low").Inc()
+	PhoneLookupTotal.WithLabelValues("blocked", "high").Inc()
+	PhoneLookupTotal.WithLabelValues("blocked", "high").Inc()
 
 	// then
-	assert.InDelta(t, float64(1), promtestutil.ToFloat64(total.WithLabelValues("allowed", "low")), 0.01)
-	assert.InDelta(t, float64(2), promtestutil.ToFloat64(total.WithLabelValues("blocked", "high")), 0.01)
-	assert.Equal(t, 2, promtestutil.CollectAndCount(total))
+	assert.InDelta(t, float64(1), promtestutil.ToFloat64(PhoneLookupTotal.WithLabelValues("allowed", "low")), 0.01)
+	assert.InDelta(t, float64(2), promtestutil.ToFloat64(PhoneLookupTotal.WithLabelValues("blocked", "high")), 0.01)
+	assert.Equal(t, 2, promtestutil.CollectAndCount(PhoneLookupTotal))
 }
 
 func TestPhoneLookupErrorsTotalIncrements(t *testing.T) {
 	// given
-	errors := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "sandbox_signup_phone_lookup_errors_total_test",
-			Help: "test",
-		},
-		[]string{"error_type"},
-	)
+	PhoneLookupErrorsTotal.Reset()
 
 	// when
-	errors.WithLabelValues("api_error").Inc()
-	errors.WithLabelValues("api_error").Inc()
-	errors.WithLabelValues("timeout").Inc()
+	PhoneLookupErrorsTotal.WithLabelValues("api_error").Inc()
+	PhoneLookupErrorsTotal.WithLabelValues("api_error").Inc()
+	PhoneLookupErrorsTotal.WithLabelValues("timeout").Inc()
 
 	// then
-	assert.InDelta(t, float64(2), promtestutil.ToFloat64(errors.WithLabelValues("api_error")), 0.01)
-	assert.InDelta(t, float64(1), promtestutil.ToFloat64(errors.WithLabelValues("timeout")), 0.01)
-	assert.Equal(t, 2, promtestutil.CollectAndCount(errors))
+	assert.InDelta(t, float64(2), promtestutil.ToFloat64(PhoneLookupErrorsTotal.WithLabelValues("api_error")), 0.01)
+	assert.InDelta(t, float64(1), promtestutil.ToFloat64(PhoneLookupErrorsTotal.WithLabelValues("timeout")), 0.01)
+	assert.Equal(t, 2, promtestutil.CollectAndCount(PhoneLookupErrorsTotal))
 }

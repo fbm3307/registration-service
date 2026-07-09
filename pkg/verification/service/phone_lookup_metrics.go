@@ -6,10 +6,12 @@ import (
 
 var (
 	// PhoneLookupTotal counts successful Twilio Lookup API responses by result and risk category.
+	// result=blocked is incremented only when the signup is actually rejected (mode=enabled).
+	// result=allowed covers low-risk numbers and high-risk detections in log mode.
 	PhoneLookupTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "sandbox_signup_phone_lookup_total",
-			Help: "Total successful phone lookup operations by result and risk category.",
+			Help: "Total successful phone lookup operations by result and risk category. result=blocked means the signup was rejected.",
 		},
 		[]string{"result", "risk_category"},
 	)
