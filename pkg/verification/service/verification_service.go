@@ -249,6 +249,7 @@ func (s *ServiceImpl) performPhoneLookup(ctx *gin.Context, cfg configuration.Reg
 	}
 	result, lookupErr := s.PhoneLookupService.LookupPhone(e164PhoneNumber)
 	if lookupErr != nil {
+		PhoneLookupErrorsTotal.WithLabelValues("api_error").Inc()
 		log.Error(ctx, lookupErr, "phone lookup failed, proceeding (fail-open)")
 		return false, nil
 	}
@@ -261,11 +262,14 @@ func (s *ServiceImpl) performPhoneLookup(ctx *gin.Context, cfg configuration.Reg
 		annotationValues[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey] = string(detailsJSON)
 	}
 	if isHighRiskPhone(result) {
+		PhoneLookupTotal.WithLabelValues("blocked", result.CarrierRiskCategory).Inc()
 		log.Info(ctx, fmt.Sprintf("high risk phone detected (carrier_risk=%s, blocked=%t, phone_lookup_mode=%s)",
 			result.CarrierRiskCategory, result.NumberBlocked, mode))
 		if mode == toolchainv1alpha1.PhoneLookupModeEnabled {
 			return true, crterrors.NewForbiddenError("phone verification rejected", "cannot proceed with verification")
 		}
+	} else {
+		PhoneLookupTotal.WithLabelValues("allowed", result.CarrierRiskCategory).Inc()
 	}
 	return false, nil
 }
