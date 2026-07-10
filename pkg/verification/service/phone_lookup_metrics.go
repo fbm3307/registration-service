@@ -4,6 +4,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	PhoneLookupResultAllowed = "allowed"
+	PhoneLookupResultBlocked = "blocked"
+)
+
 var (
 	// PhoneLookupTotal counts successful Twilio Lookup API responses by result and risk category.
 	// result=blocked is incremented only when the signup is actually rejected (mode=enabled).
@@ -17,10 +22,11 @@ var (
 	)
 
 	// PhoneLookupErrorsTotal counts Twilio Lookup API failures (fail-open cases).
+	// error_type is the HTTP status code when available (e.g. "500", "503"), otherwise "unknown".
 	PhoneLookupErrorsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "sandbox_signup_phone_lookup_errors_total",
-			Help: "Phone lookup API errors (fail-open cases).",
+			Help: "Phone lookup API errors (fail-open cases), labeled by HTTP status code when available.",
 		},
 		[]string{"error_type"},
 	)

@@ -1095,7 +1095,7 @@ func (s *TestVerificationServiceSuite) TestInitVerificationPhoneLookup() {
 		assert.Empty(s.T(), updated.Annotations[toolchainv1alpha1.UserSignupPhoneLookupDetailsAnnotationKey])
 		assert.NotEmpty(s.T(), updated.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
 		assert.False(s.T(), states.Rejected(updated))
-		assert.InDelta(s.T(), float64(1), phoneLookupErrors("api_error"), 0.01)
+		assert.InDelta(s.T(), float64(1), phoneLookupErrors("500"), 0.01)
 		assert.Equal(s.T(), 0, promtestutil.CollectAndCount(verificationservice.PhoneLookupTotal))
 	})
 
