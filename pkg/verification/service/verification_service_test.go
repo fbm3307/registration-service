@@ -913,6 +913,20 @@ func (s *TestVerificationServiceSuite) TestInitVerificationPhoneLookup() {
 			"sms_pumping_risk_score": 34,
 		},
 	}
+	highRiskNotBlockedBody := map[string]interface{}{
+		"sms_pumping_risk": map[string]interface{}{
+			"carrier_risk_category":  "high",
+			"number_blocked":         false,
+			"sms_pumping_risk_score": 34,
+		},
+	}
+	lowRiskBlockedBody := map[string]interface{}{
+		"sms_pumping_risk": map[string]interface{}{
+			"carrier_risk_category":  "low",
+			"number_blocked":         true,
+			"sms_pumping_risk_score": 2,
+		},
+	}
 	lowRiskBody := map[string]interface{}{
 		"sms_pumping_risk": map[string]interface{}{
 			"carrier_risk_category":  "low",
@@ -977,31 +991,54 @@ func (s *TestVerificationServiceSuite) TestInitVerificationPhoneLookup() {
 		assert.True(s.T(), gock.IsDone())
 	})
 
-	s.Run("low risk phone proceeds with SMS", func() {
-		// given
-		defer gock.Off()
-		s.setPhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled)
-		mockTwilioLookup(lookupUKPhone, lowRiskBody)
-		mockTwilioSMS()
+	for _, tc := range []struct {
+		name       string
+		username   string
+		lookupBody map[string]interface{}
+	}{
+		{
+			name:       "low risk phone proceeds with SMS",
+			username:   "lookup-ok@kubesaw",
+			lookupBody: lowRiskBody,
+		},
+		{
+			name:       "high risk without blocked proceeds with SMS",
+			username:   "lookup-high-only@kubesaw",
+			lookupBody: highRiskNotBlockedBody,
+		},
+		{
+			name:       "blocked without high risk proceeds with SMS",
+			username:   "lookup-blocked-only@kubesaw",
+			lookupBody: lowRiskBlockedBody,
+		},
+	} {
+		s.Run(tc.name, func() {
+			// given
+			defer gock.Off()
+			s.setPhoneLookupMode(toolchainv1alpha1.PhoneLookupModeEnabled)
+			mockTwilioLookup(lookupUKPhone, tc.lookupBody)
+			mockTwilioSMS()
 
-		userSignup := testusersignup.NewUserSignup(
-			testusersignup.WithEncodedName("lookup-ok@kubesaw"),
-			testusersignup.VerificationRequiredAgo(time.Second))
-		fakeClient, application := testutil.PrepareInClusterApp(s.T(), userSignup)
+			userSignup := testusersignup.NewUserSignup(
+				testusersignup.WithEncodedName(tc.username),
+				testusersignup.VerificationRequiredAgo(time.Second))
+			fakeClient, application := testutil.PrepareInClusterApp(s.T(), userSignup)
 
-		// when
-		ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
-		err := application.VerificationService().InitVerification(ctx, "lookup-ok@kubesaw", lookupUKPhone, "44")
+			// when
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			err := application.VerificationService().InitVerification(ctx, tc.username, lookupUKPhone, "44")
 
-		// then
-		require.NoError(s.T(), err)
+			// then
+			require.NoError(s.T(), err)
 
-		updated := &toolchainv1alpha1.UserSignup{}
-		require.NoError(s.T(), fakeClient.Get(gocontext.TODO(), client.ObjectKeyFromObject(userSignup), updated))
-		assertLookupDetails(s.T(), updated)
-		assert.False(s.T(), states.Rejected(updated))
-		assert.NotEmpty(s.T(), updated.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
-	})
+			updated := &toolchainv1alpha1.UserSignup{}
+			require.NoError(s.T(), fakeClient.Get(gocontext.TODO(), client.ObjectKeyFromObject(userSignup), updated))
+			assertLookupDetails(s.T(), updated)
+			assert.False(s.T(), states.Rejected(updated))
+			assert.NotEmpty(s.T(), updated.Annotations[toolchainv1alpha1.UserSignupVerificationCodeAnnotationKey])
+			assert.True(s.T(), gock.IsDone())
+		})
+	}
 
 	s.Run("lookup API error fails open", func() {
 		// given
