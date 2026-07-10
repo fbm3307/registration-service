@@ -277,10 +277,10 @@ func (s *ServiceImpl) performPhoneLookup(ctx *gin.Context, cfg configuration.Reg
 	return false, nil
 }
 
-// isHighRiskPhone returns true when Twilio Lookup reports the highest risk category ("high";
-// available categories are low, mild, moderate, high) or when the number is blocked.
+// isHighRiskPhone returns true when Twilio Lookup reports both the highest risk category
+// ("high"; available categories are low, mild, moderate, high) and that the number is blocked.
 func isHighRiskPhone(result *sender.PhoneLookupResult) bool {
-	return result.CarrierRiskCategory == "high" || result.NumberBlocked
+	return result.CarrierRiskCategory == "high" && result.NumberBlocked
 }
 
 // countryCodeFromE164 parses an E.164 phone number and returns its ISO 3166-1 alpha-2 country code.
